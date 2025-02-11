@@ -48,10 +48,8 @@ export const renderPageToHtml = async (
   }
 
   if (!html) {
-    console.log(
-      "html is empty, falling back to using page's rendering function for html"
-    );
-    html = (await page.renderReqToHTML(req, res)) as unknown as string;
+    console.log("html is empty, the page will not be saved in S3");
+    renderOpts.isNotFound = true;
   }
 
   return { html, renderOpts };

@@ -7,6 +7,7 @@ import {
 } from "./types";
 import { s3StorePage } from "./s3/s3StorePage";
 import { renderPageToHtml } from "@sls-next/core";
+import { s3DeletePage } from "./s3/s3DeletePage";
 
 export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
   await Promise.all(
@@ -32,6 +33,22 @@ export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
       const normalizedUri = decodeURI(regenerationEvent.pageS3Path)
         .replace(`static-pages/${manifest.buildId}`, "")
         .replace(/.js$/, "");
+
+      if (renderOpts.isNotFound) {
+        try {
+          await s3DeletePage({
+            uri: normalizedUri,
+            basePath: regenerationEvent.basePath,
+            bucketName: regenerationEvent.bucketName,
+            buildId: manifest.buildId,
+            region: regenerationEvent.region
+          });
+        } catch (e) {
+          console.error("Error deleting page from S3", e);
+        }
+
+        return;
+      }
 
       await s3StorePage({
         html,
