@@ -324,6 +324,14 @@ const handleOriginResponse = async ({
   const staticRoute = route.isStatic ? (route as StaticRoute) : undefined;
   const statusCode = route?.statusCode;
 
+  const disallowedStatusCodes = ["200", "304", "206", "404", "403"];
+
+  if (!disallowedStatusCodes.includes(response.status)) {
+    console.log(
+      `Response status is not 200: URL - ${request.uri}, Status - ${response.status} (From Default Lambda At Edge)`
+    );
+  }
+
   // These statuses are returned when S3 does not have access to the page.
   // 404 will also be returned if CloudFront has permissions to list objects.
   if (response.status !== "403" && response.status !== "404") {
