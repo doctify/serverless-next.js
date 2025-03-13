@@ -1,6 +1,10 @@
 import { resultsToString } from "next/dist/server/utils";
 import { IncomingMessage, ServerResponse } from "http";
 
+function clone(req: IncomingMessage) {
+  return Object.assign(Object.create(Object.getPrototypeOf(req)), req);
+}
+
 /**
  * Render to HTML helper. Starting in Next.js 11.1 a change was introduced so renderReqToHTML no longer returns a string.
  * See: https://github.com/vercel/next.js/pull/27319
@@ -25,7 +29,7 @@ export const renderPageToHtml = async (
   renderMode?: "export" | "passthrough" | true
 ): Promise<{ html: string; renderOpts: Record<string, any> }> => {
   const { renderOpts, html: htmlResult } = await page.renderReqToHTML(
-    req,
+    clone(req),
     res,
     renderMode
   );
@@ -47,7 +51,7 @@ export const renderPageToHtml = async (
     }
   }
 
-  if (!html) {
+  if (!html && !renderOpts.isNotFound) {
     console.log("html is empty, the page will not be saved in S3");
     renderOpts.isNotFound = true;
   }
