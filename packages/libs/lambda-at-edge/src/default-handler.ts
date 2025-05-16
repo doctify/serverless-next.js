@@ -100,6 +100,8 @@ const normaliseS3OriginDomain = (s3Origin: CloudFrontS3Origin): string => {
 export const handler = async (
   event: OriginRequestEvent | OriginResponseEvent
 ): Promise<CloudFrontResultResponse | CloudFrontRequest> => {
+  console.log(JSON.stringify(event), "DEFAULT HANDLER LAMBDA AT EDGE EVENT");
+
   const manifest: OriginRequestDefaultHandlerManifest = Manifest;
   let response: CloudFrontResultResponse | CloudFrontRequest;
   const prerenderManifest: PrerenderManifestType = PrerenderManifest;
