@@ -54,6 +54,7 @@ import { createRedirectResponse } from "@sls-next/core/dist/module/route/redirec
 import { redirectByPageProps } from "@sls-next/core/dist/module/handle/redirect";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import getStream from "get-stream";
+import handleTenantRedirect from "./custom/tenantRedirect";
 
 const basePath = RoutesManifestJson.basePath;
 
@@ -100,12 +101,16 @@ const normaliseS3OriginDomain = (s3Origin: CloudFrontS3Origin): string => {
 export const handler = async (
   event: OriginRequestEvent | OriginResponseEvent
 ): Promise<CloudFrontResultResponse | CloudFrontRequest> => {
-  console.log(JSON.stringify(event), "DEFAULT HANDLER LAMBDA AT EDGE EVENT");
-
   const manifest: OriginRequestDefaultHandlerManifest = Manifest;
+  const request = event.Records[0].cf.request;
+  const uri = request.uri;
   let response: CloudFrontResultResponse | CloudFrontRequest;
   const prerenderManifest: PrerenderManifestType = PrerenderManifest;
   const routesManifest: RoutesManifest = RoutesManifestJson;
+
+  if (request.headers["cloudfront-viewer-country"] && uri === "/") {
+    return handleTenantRedirect(request);
+  }
 
   const { now, log } = perfLogger(manifest.logLambdaExecutionTimes);
 
