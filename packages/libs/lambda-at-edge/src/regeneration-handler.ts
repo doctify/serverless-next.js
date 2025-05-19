@@ -10,56 +10,56 @@ import { renderPageToHtml } from "@sls-next/core";
 import { s3DeletePage } from "./s3/s3DeletePage";
 
 export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
-  await Promise.all(
-    event.Records.map(async (record) => {
-      const regenerationEvent: RegenerationEvent = JSON.parse(record.body);
+  console.log(JSON.stringify(event), "REGENERATION EVENT");
 
-      const manifest: OriginRequestDefaultHandlerManifest = Manifest;
-      const { req, res } = lambdaAtEdgeCompat(
-        { request: regenerationEvent.cloudFrontEventRequest },
-        { enableHTTPCompression: manifest.enableHTTPCompression }
-      );
+  for (const record of event.Records) {
+    const regenerationEvent: RegenerationEvent = JSON.parse(record.body);
 
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const page = require(`./${regenerationEvent.pagePath}`);
+    const manifest: OriginRequestDefaultHandlerManifest = Manifest;
+    const { req, res } = lambdaAtEdgeCompat(
+      { request: regenerationEvent.cloudFrontEventRequest },
+      { enableHTTPCompression: manifest.enableHTTPCompression }
+    );
 
-      const { renderOpts, html } = await renderPageToHtml(
-        page,
-        req,
-        res,
-        "passthrough"
-      );
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const page = require(`./${regenerationEvent.pagePath}`);
 
-      const normalizedUri = decodeURI(regenerationEvent.pageS3Path)
-        .replace(`static-pages/${manifest.buildId}`, "")
-        .replace(/.js$/, "");
+    const { renderOpts, html } = await renderPageToHtml(
+      page,
+      req,
+      res,
+      "passthrough"
+    );
 
-      if (renderOpts.isNotFound) {
-        try {
-          await s3DeletePage({
-            uri: normalizedUri,
-            basePath: regenerationEvent.basePath,
-            bucketName: regenerationEvent.bucketName,
-            buildId: manifest.buildId,
-            region: regenerationEvent.region
-          });
-        } catch (e) {
-          console.error("Error deleting page from S3", e);
-        }
+    const normalizedUri = decodeURI(regenerationEvent.pageS3Path)
+      .replace(`static-pages/${manifest.buildId}`, "")
+      .replace(/.js$/, "");
 
-        return;
+    if (renderOpts.isNotFound) {
+      try {
+        await s3DeletePage({
+          uri: normalizedUri,
+          basePath: regenerationEvent.basePath,
+          bucketName: regenerationEvent.bucketName,
+          buildId: manifest.buildId,
+          region: regenerationEvent.region
+        });
+      } catch (e) {
+        console.error("Error deleting page from S3", e);
       }
 
-      await s3StorePage({
-        html,
-        uri: normalizedUri,
-        basePath: regenerationEvent.basePath,
-        bucketName: regenerationEvent.bucketName,
-        buildId: manifest.buildId,
-        pageData: renderOpts.pageData,
-        region: regenerationEvent.region,
-        revalidate: renderOpts.revalidate as number
-      });
-    })
-  );
+      return;
+    }
+
+    await s3StorePage({
+      html,
+      uri: normalizedUri,
+      basePath: regenerationEvent.basePath,
+      bucketName: regenerationEvent.bucketName,
+      buildId: manifest.buildId,
+      pageData: renderOpts.pageData,
+      region: regenerationEvent.region,
+      revalidate: renderOpts.revalidate as number
+    });
+  }
 };

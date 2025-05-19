@@ -75,6 +75,8 @@ export const handleRequest = async (
  * @param event
  */
 export const handleRegeneration = async (event: SQSEvent): Promise<void> => {
+  console.log(JSON.stringify(event), "REGENERATION EVENT");
+
   await Promise.all(
     event.Records.map(async (record) => {
       const regenerationEvent: RegenerationEvent = JSON.parse(record.body);
