@@ -12,54 +12,53 @@ import { s3DeletePage } from "./s3/s3DeletePage";
 export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
   console.log(JSON.stringify(event), "REGENERATION EVENT");
 
-  for (const record of event.Records) {
-    const regenerationEvent: RegenerationEvent = JSON.parse(record.body);
-
-    const manifest: OriginRequestDefaultHandlerManifest = Manifest;
-    const { req, res } = lambdaAtEdgeCompat(
-      { request: regenerationEvent.cloudFrontEventRequest },
-      { enableHTTPCompression: manifest.enableHTTPCompression }
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const page = require(`./${regenerationEvent.pagePath}`);
-
-    const { renderOpts, html } = await renderPageToHtml(
-      page,
-      req,
-      res,
-      "passthrough"
-    );
-
-    const normalizedUri = decodeURI(regenerationEvent.pageS3Path)
-      .replace(`static-pages/${manifest.buildId}`, "")
-      .replace(/.js$/, "");
-
-    if (renderOpts.isNotFound) {
+  await Promise.all(
+    event.Records.map(async (record) => {
       try {
-        await s3DeletePage({
+        const regenerationEvent: RegenerationEvent = JSON.parse(record.body);
+        const manifest: OriginRequestDefaultHandlerManifest = Manifest;
+        const { req, res } = lambdaAtEdgeCompat(
+          { request: regenerationEvent.cloudFrontEventRequest },
+          { enableHTTPCompression: manifest.enableHTTPCompression }
+        );
+
+        const page = require(`./${regenerationEvent.pagePath}`);
+
+        const { renderOpts, html } = await renderPageToHtml(
+          page,
+          req,
+          res,
+          "passthrough"
+        );
+
+        const normalizedUri = decodeURI(regenerationEvent.pageS3Path)
+          .replace(`static-pages/${manifest.buildId}`, "")
+          .replace(/.js$/, "");
+
+        if (renderOpts.isNotFound) {
+          await s3DeletePage({
+            uri: normalizedUri,
+            basePath: regenerationEvent.basePath,
+            bucketName: regenerationEvent.bucketName,
+            buildId: manifest.buildId,
+            region: regenerationEvent.region
+          });
+          return;
+        }
+
+        await s3StorePage({
+          html,
           uri: normalizedUri,
           basePath: regenerationEvent.basePath,
           bucketName: regenerationEvent.bucketName,
           buildId: manifest.buildId,
-          region: regenerationEvent.region
+          pageData: renderOpts.pageData,
+          region: regenerationEvent.region,
+          revalidate: renderOpts.revalidate as number
         });
-      } catch (e) {
-        console.error("Error deleting page from S3", e);
+      } catch (err) {
+        console.error("Error processing SQS record:", err);
       }
-
-      return;
-    }
-
-    await s3StorePage({
-      html,
-      uri: normalizedUri,
-      basePath: regenerationEvent.basePath,
-      bucketName: regenerationEvent.bucketName,
-      buildId: manifest.buildId,
-      pageData: renderOpts.pageData,
-      region: regenerationEvent.region,
-      revalidate: renderOpts.revalidate as number
-    });
-  }
+    })
+  );
 };
