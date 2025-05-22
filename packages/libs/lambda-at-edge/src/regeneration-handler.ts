@@ -38,6 +38,8 @@ export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
           .replace(/.js$/, "");
 
         if (renderOpts.isNotFound) {
+          console.log("Page not found, deleting from S3:", normalizedUri);
+
           await s3DeletePage({
             uri: normalizedUri,
             basePath: regenerationEvent.basePath,
@@ -45,6 +47,7 @@ export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
             buildId: manifest.buildId,
             region: regenerationEvent.region
           });
+
           return;
         }
 
