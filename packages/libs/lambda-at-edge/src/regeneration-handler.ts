@@ -8,12 +8,14 @@ import {
 import { s3StorePage } from "./s3/s3StorePage";
 import { renderPageToHtml } from "@sls-next/core";
 import { s3DeletePage } from "./s3/s3DeletePage";
+import pMap from "p-map";
 
 export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
   console.log(JSON.stringify(event), "REGENERATION EVENT");
 
-  await Promise.all(
-    event.Records.map(async (record) => {
+  await pMap(
+    event.Records,
+    async (record) => {
       try {
         const regenerationEvent: RegenerationEvent = JSON.parse(record.body);
         const manifest: OriginRequestDefaultHandlerManifest = Manifest;
@@ -59,6 +61,9 @@ export const handler = async (event: AWSLambda.SQSEvent): Promise<void> => {
       } catch (err) {
         console.error("Error processing SQS record:", err);
       }
-    })
+    },
+    {
+      concurrency: 3
+    }
   );
 };
