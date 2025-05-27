@@ -493,6 +493,9 @@ const handleOriginResponse = async ({
   // This is a fallback route that should be stored in S3 before returning it
   const { renderOpts, html } = fallbackRoute;
   // Check if response is a redirect
+
+  console.log("REDIRECT CHECK", JSON.stringify(renderOpts));
+
   if (
     typeof renderOpts.pageData !== "undefined" &&
     typeof renderOpts.pageData.pageProps !== "undefined" &&
