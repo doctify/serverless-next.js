@@ -13,16 +13,7 @@ export const redirectByPageProps = (event: Event, route: RedirectRoute) => {
     "cache-control",
     route.headers?.cacheControl?.join(":") ?? ""
   );
-  event.res.setHeader("Content-Type", "application/json");
-  event.res.statusCode = 200;
-
-  const body = {
-    pageProps: {
-      __N_REDIRECT: route.headers?.location[0].value ?? "",
-      __N_REDIRECT_STATUS: route.status
-    },
-    __N_SSG: true
-  };
-  event.res.write(JSON.stringify(body));
+  event.res.setHeader("Location", route.headers?.location[0].value ?? "");
+  event.res.statusCode = route.status;
   event.res.end();
 };
